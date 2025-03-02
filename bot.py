@@ -1,8 +1,8 @@
 from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters, ContextTypes
 import os
-from langchain_community.llms import LlamaCpp
-from langchain.prompts import PromptTemplate
+# from langchain_community.llms import LlamaCpp
+# from langchain.prompts import PromptTemplate
 
 from modules.ya_generate_text_api import generate
 from modules.whisper_lib import wisp_recognize
@@ -16,23 +16,23 @@ SAVE_PATH = os.path.abspath("") + "\\voice_messages"
 if not os.path.exists(SAVE_PATH):
     os.makedirs(SAVE_PATH)
 
-path_ai_model_3b = "F:\huggingface\models--Qwen--Qwen2.5-Coder-3B-Instruct-GGUF\snapshots\qwen2.5-coder-3b-instruct-q8_0.gguf"
-path_ai_model_7b = r"D:\Users\Ruslan\Documents\PyCharm_Projects\llama_ccp_python\src\models\llama-2-7b.Q8_0.gguf"
+# path_ai_model_3b = "F:\huggingface\models--Qwen--Qwen2.5-Coder-3B-Instruct-GGUF\snapshots\qwen2.5-coder-3b-instruct-q8_0.gguf"
+# path_ai_model_7b = r"D:\Users\Ruslan\Documents\PyCharm_Projects\llama_ccp_python\src\models\llama-2-7b.Q8_0.gguf"
 
-llm = LlamaCpp(model_path=path_ai_model_3b, n_ctx=1024)
+# llm = LlamaCpp(model_path=path_ai_model_3b, n_ctx=1024)
 
 
 # async def hello(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 #     await update.message.reply_text(f'Hello {update.effective_user.first_name}')
 
 
-def get_formated_text(text):
-    prompt = PromptTemplate.from_template("{text}")
-    formatted_prompt = prompt.format(text=text)
-    print("Prompt:")
-    print(formatted_prompt)
-    llm_answer_txt = llm(formatted_prompt)
-    return llm_answer_txt
+# def get_formated_text(text):
+#     prompt = PromptTemplate.from_template("{text}")
+#     formatted_prompt = prompt.format(text=text)
+#     print("Prompt:")
+#     print(formatted_prompt)
+#     llm_answer_txt = llm(formatted_prompt)
+#     return llm_answer_txt
 
 
 async def save_voice(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
