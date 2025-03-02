@@ -9,6 +9,7 @@ from modules.whisper_lib import wisp_recognize
 
 # from modules.speech_rec import recognize
 
+
 TOKEN = "8115806824:AAHfyqz0lN4L1F0nanIFuSkwAKmDzroVirk"
 SAVE_PATH = os.path.abspath("") + "\\voice_messages"
 
