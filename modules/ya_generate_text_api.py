@@ -4,7 +4,7 @@ from __future__ import annotations
 from yandex_cloud_ml_sdk import YCloudML
 
 
-def generate(raw_text):
+def generate(raw_text, secret_data):
     messages = [
         {
             "role": "system",
@@ -19,8 +19,8 @@ def generate(raw_text):
         # },
     ]
     sdk = YCloudML(
-        folder_id="",
-        auth="",
+        folder_id=secret_data["folder_id"],
+        auth=secret_data["auth"],
     )
 
     result = (

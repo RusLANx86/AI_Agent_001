@@ -1,6 +1,6 @@
 from telegram import Update, ReplyKeyboardMarkup
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters, ContextTypes
-import os
+import os, json
 # from langchain_community.llms import LlamaCpp
 # from langchain.prompts import PromptTemplate
 
@@ -9,8 +9,10 @@ from modules.whisper_lib import wisp_recognize
 
 # from modules.speech_rec import recognize
 
+with open("secret_data.json", "r") as secret_file:
+    secret_data = json.loads(secret_file.read())
 
-TOKEN = "secret_token"
+TOKEN = secret_data["BOT_TOKEN"]
 SAVE_PATH = os.path.abspath("") + "\\voice_messages"
 
 if not os.path.exists(SAVE_PATH):
@@ -51,7 +53,7 @@ async def save_voice(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
         print("Голос преобразован в текст. Передача в LLM")
 
         # llm_txt = get_formated_text(text=text)
-        llm_res = generate(raw_text=text)
+        llm_res = generate(raw_text=text, secret_data=secret_data["YCloudML"])
         llm_txt = llm_res.alternatives[0].text
         print("LLM вернула обработанный текст. Отвечаем им в ТГ и записываем с локальный файл.")
         await update.message.reply_text(f"Обработанный с LLM текст: {llm_txt}")
