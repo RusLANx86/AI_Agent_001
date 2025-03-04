@@ -1,4 +1,4 @@
-from telegram import Update
+from telegram import Update, ReplyKeyboardMarkup
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters, ContextTypes
 import os
 # from langchain_community.llms import LlamaCpp
@@ -10,11 +10,12 @@ from modules.whisper_lib import wisp_recognize
 # from modules.speech_rec import recognize
 
 
-TOKEN = "8115806824:AAHfyqz0lN4L1F0nanIFuSkwAKmDzroVirk"
+TOKEN = "secret_token"
 SAVE_PATH = os.path.abspath("") + "\\voice_messages"
 
 if not os.path.exists(SAVE_PATH):
     os.makedirs(SAVE_PATH)
+
 
 # path_ai_model_3b = "F:\huggingface\models--Qwen--Qwen2.5-Coder-3B-Instruct-GGUF\snapshots\qwen2.5-coder-3b-instruct-q8_0.gguf"
 # path_ai_model_7b = r"D:\Users\Ruslan\Documents\PyCharm_Projects\llama_ccp_python\src\models\llama-2-7b.Q8_0.gguf"
@@ -62,8 +63,22 @@ async def save_voice(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
         await update.message.reply_text("Не удалось получить голосовое сообщение.")
 
 
+
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    keyboard = [["Новая идея"]]
+    reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
+    await update.message.reply_text("Выберите кнопку:", reply_markup=reply_markup)
+
+
+async def button_response(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    text = update.message.text
+    if text == "Новая идея":
+        await update.message.reply_text("Кнопка нажата!")
+
+
 app = ApplicationBuilder().token(TOKEN).build()
-# app.add_handler(CommandHandler("hello", hello))
 app.add_handler(MessageHandler(filters.VOICE, save_voice))
+app.add_handler(CommandHandler("start", start))
+app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, button_response))
 
 app.run_polling()

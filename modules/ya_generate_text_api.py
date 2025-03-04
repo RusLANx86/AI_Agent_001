@@ -19,8 +19,8 @@ def generate(raw_text):
         # },
     ]
     sdk = YCloudML(
-        folder_id="b1g5gp8qjtf8jii969qh",
-        auth="AQVN1RU85IhUqMRkhNH8shy_uE72paVxoWWr7H5O",
+        folder_id="",
+        auth="",
     )
 
     result = (
