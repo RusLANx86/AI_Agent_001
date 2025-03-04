@@ -174,4 +174,4 @@ cython_debug/
 # PyPI configuration file
 .pypirc
 /__pycache__
-!/secret_data.json
+secret_data.json
