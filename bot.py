@@ -1,6 +1,7 @@
 from telegram import Update, ReplyKeyboardMarkup
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters, ContextTypes
 import os, json
+from datetime import datetime
 # from langchain_community.llms import LlamaCpp
 # from langchain.prompts import PromptTemplate
 
@@ -19,51 +20,38 @@ if not os.path.exists(SAVE_PATH):
     os.makedirs(SAVE_PATH)
 
 
-# path_ai_model_3b = "F:\huggingface\models--Qwen--Qwen2.5-Coder-3B-Instruct-GGUF\snapshots\qwen2.5-coder-3b-instruct-q8_0.gguf"
-# path_ai_model_7b = r"D:\Users\Ruslan\Documents\PyCharm_Projects\llama_ccp_python\src\models\llama-2-7b.Q8_0.gguf"
-
-# llm = LlamaCpp(model_path=path_ai_model_3b, n_ctx=1024)
-
-
-# async def hello(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-#     await update.message.reply_text(f'Hello {update.effective_user.first_name}')
-
-
-# def get_formated_text(text):
-#     prompt = PromptTemplate.from_template("{text}")
-#     formatted_prompt = prompt.format(text=text)
-#     print("Prompt:")
-#     print(formatted_prompt)
-#     llm_answer_txt = llm(formatted_prompt)
-#     return llm_answer_txt
-
-
 async def save_voice(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     voice = update.message.voice
+    user_id = update.effective_user.id
+    user_dir = os.path.join(SAVE_PATH, str(user_id))
+    os.makedirs(user_dir, exist_ok=True)
+
     if voice:
         print("Начало работы")
         file = await context.bot.get_file(voice.file_id)
-        file_path = os.path.join(SAVE_PATH, f"{voice.file_id}.ogg")
-        text_path = os.path.join(SAVE_PATH, f"{voice.file_id}.md")
+        fileName = datetime.now().strftime("%Y-%m-%d %H-%M-%S")
+        file_path = os.path.join(user_dir, f"{fileName}.ogg")
+        text_path_to_llm = os.path.join(user_dir, f"{fileName}.txt")
+        text_path_from_llm = os.path.join(user_dir, f"{fileName}.md")
         await file.download_to_drive(file_path)
 
-        # text = recognize(SAVE_PATH=SAVE_PATH, filename=file.file_id)
-        text = wisp_recognize(filename=file_path, model="turbo")
-
+        # text_to_llm = recognize(SAVE_PATH=SAVE_PATH, filename=file.file_id)
+        text_to_llm = wisp_recognize(filename=file_path, model="turbo")
+        with open(text_path_to_llm, "w", encoding="utf-8") as text_file:
+            text_file.write(text_to_llm)
         print("Голос преобразован в текст. Передача в LLM")
 
-        # llm_txt = get_formated_text(text=text)
-        llm_res = generate(raw_text=text, secret_data=secret_data["YCloudML"])
-        llm_txt = llm_res.alternatives[0].text
+        # text_from_llm = get_formated_text(text=text_to_llm)
+        llm_res = generate(raw_text=text_to_llm, secret_data=secret_data["YCloudML"])
+        text_from_llm = llm_res.alternatives[0].text
         print("LLM вернула обработанный текст. Отвечаем им в ТГ и записываем с локальный файл.")
-        await update.message.reply_text(f"Обработанный с LLM текст: {llm_txt}")
-        with open(text_path, "w", encoding="utf-8") as text_file:
-            text_file.write(llm_txt)
+        await update.message.reply_text(f"Обработанный с LLM текст: {text_from_llm}")
+        with open(text_path_from_llm, "w", encoding="utf-8") as text_file:
+            text_file.write(text_from_llm)
 
-        print(f"Ответ LLM сохранен: {text_path}")
+        print(f"Ответ LLM сохранен: {text_path_from_llm}")
     else:
         await update.message.reply_text("Не удалось получить голосовое сообщение.")
-
 
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
