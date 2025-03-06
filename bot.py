@@ -15,15 +15,31 @@ with open("secret_data.json", "r") as secret_file:
 
 TOKEN = secret_data["BOT_TOKEN"]
 SAVE_PATH = os.path.abspath("") + "\\voice_messages"
+text_instruction = """
+Этот бот может оформлять ваши мысли касательно бизнес-идеи в фортированного вида отчет.
+Бот поддерживает контекст общения. 
+Для очистки контекста просто нажмите кнопку "Очистить контекст"
+"""
+
+user_info = {}
 
 if not os.path.exists(SAVE_PATH):
     os.makedirs(SAVE_PATH)
 
 
+def set_user_info(user_id):
+    if user_id not in user_info:
+        user_info[user_id] = {}
+        user_info[user_id]["user_dir"] = os.path.join(SAVE_PATH, str(user_id))
+        os.makedirs(user_info[user_id]["user_dir"], exist_ok=True)
+        user_info[user_id]["file_context"] = os.path.join(user_info[user_id]["user_dir"], f"context.txt")
+
+
 async def save_voice(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    set_user_info(user_id=update.effective_user.id)  # TODO Нужна ли эта строка?
     voice = update.message.voice
     user_id = update.effective_user.id
-    user_dir = os.path.join(SAVE_PATH, str(user_id))
+    user_dir = user_info[user_id]["user_dir"]
     os.makedirs(user_dir, exist_ok=True)
 
     if voice:
@@ -33,13 +49,22 @@ async def save_voice(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
         file_path = os.path.join(user_dir, f"{fileName}.ogg")
         text_path_to_llm = os.path.join(user_dir, f"{fileName}.txt")
         text_path_from_llm = os.path.join(user_dir, f"{fileName}.md")
+        file_context = user_info[user_id]["file_context"]
         await file.download_to_drive(file_path)
 
         # text_to_llm = recognize(SAVE_PATH=SAVE_PATH, filename=file.file_id)
         text_to_llm = wisp_recognize(filename=file_path, model="turbo")
+
+        print("Голос преобразован в текст. Передача в LLM")
+
         with open(text_path_to_llm, "w", encoding="utf-8") as text_file:
             text_file.write(text_to_llm)
-        print("Голос преобразован в текст. Передача в LLM")
+        # обновление контекста
+        with open(file_context, "a", encoding="utf-8") as text_file:
+            text_file.write('\n' + text_to_llm)
+        # считывание всего контекста для передачи в llm
+        with open(file_context, "r", encoding="utf-8") as text_file:
+            text_to_llm = text_file.read()
 
         # text_from_llm = get_formated_text(text=text_to_llm)
         llm_res = generate(raw_text=text_to_llm, secret_data=secret_data["YCloudML"])
@@ -54,21 +79,28 @@ async def save_voice(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
         await update.message.reply_text("Не удалось получить голосовое сообщение.")
 
 
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    keyboard = [["Новая идея"]]
+async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    set_user_info(user_id=update.effective_user.id)
+    keyboard = [["Очистить контекст", "инструкция"]]
     reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
-    await update.message.reply_text("Выберите кнопку:", reply_markup=reply_markup)
+    await update.message.reply_text(text_instruction, reply_markup=reply_markup)
 
 
 async def button_response(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    user_id = update.effective_user.id
+    set_user_info(user_id)
     text = update.message.text
-    if text == "Новая идея":
-        await update.message.reply_text("Кнопка нажата!")
+    if text == "Очистить контекст":
+        with open(user_info[user_id]["file_context"], "w") as f:
+            pass
+        await update.message.reply_text("Контекст забыт. Начинайте обсуждать новую идею")
+    if text == "инструкция":
+        await update.message.reply_text(text_instruction)
 
 
 app = ApplicationBuilder().token(TOKEN).build()
 app.add_handler(MessageHandler(filters.VOICE, save_voice))
-app.add_handler(CommandHandler("start", start))
+app.add_handler(CommandHandler("start", cmd_start))
 app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, button_response))
 
 app.run_polling()
