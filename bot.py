@@ -70,9 +70,12 @@ async def save_voice(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
         llm_res = generate(raw_text=text_to_llm, secret_data=secret_data["YCloudML"])
         text_from_llm = llm_res.alternatives[0].text
         print("LLM вернула обработанный текст. Отвечаем им в ТГ и записываем с локальный файл.")
-        await update.message.reply_text(f"Обработанный с LLM текст: {text_from_llm}")
         with open(text_path_from_llm, "w", encoding="utf-8") as text_file:
             text_file.write(text_from_llm)
+
+        chunk_size = 4000
+        for i in range(0, len(text_from_llm), chunk_size):
+            await update.message.reply_text(f"Обработанный с LLM текст: {text_from_llm[i:i+chunk_size]}")
 
         print(f"Ответ LLM сохранен: {text_path_from_llm}")
     else:
@@ -81,7 +84,7 @@ async def save_voice(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
 
 async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     set_user_info(user_id=update.effective_user.id)
-    keyboard = [["Очистить контекст", "инструкция"]]
+    keyboard = [["Показать контекст", "Очистить контекст", "инструкция"]]
     reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
     await update.message.reply_text(text_instruction, reply_markup=reply_markup)
 
@@ -96,6 +99,14 @@ async def button_response(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         await update.message.reply_text("Контекст забыт. Начинайте обсуждать новую идею")
     if text == "инструкция":
         await update.message.reply_text(text_instruction)
+    if text == "Показать контекст":
+
+        with open(user_info[user_id]["file_context"], "r", encoding="utf-8") as f:
+            context_file = f.read()
+        if context_file == "":
+            await update.message.reply_text("Контекст пустой")
+        else:
+            await update.message.reply_text(context_file)
 
 
 app = ApplicationBuilder().token(TOKEN).build()

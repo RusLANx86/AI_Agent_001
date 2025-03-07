@@ -28,7 +28,6 @@ def generate(raw_text, secret_data):
         sdk.models.completions("yandexgpt").configure(temperature=0.5).run(messages)
     )
 
-    print(result)
     return result
     # for alternative in result:
     #     return alternative
