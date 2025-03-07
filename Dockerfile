@@ -1,8 +1,7 @@
 FROM python:3.12
 WORKDIR /app
-COPY requirements.txt requirements.txt
+COPY linx_require.txt .
 RUN pip install --upgrade pip
-RUN pip install -r requirements.txt
-COPY . .
-EXPOSE 5000
-CMD ["fastapi", "run"]
+RUN apt update && apt install -y ffmpeg
+RUN pip install -r linx_require.txt
+CMD ["python", "bot.py"]
