@@ -14,7 +14,9 @@ with open("secret_data.json", "r") as secret_file:
     secret_data = json.loads(secret_file.read())
 
 TOKEN = secret_data["BOT_TOKEN"]
-SAVE_PATH = os.path.abspath("") + "\\voice_messages"
+
+cur_dir = os.path.dirname(os.path.abspath(__file__))
+SAVE_PATH = os.path.join(cur_dir, "voice_messages")
 text_instruction = """
 Этот бот может оформлять ваши мысли касательно бизнес-идеи в фортированного вида отчет.
 Бот поддерживает контекст общения. 
