@@ -7,6 +7,8 @@ from datetime import datetime
 
 from modules.ya_generate_text_api import generate
 from modules.whisper_lib import wisp_recognize
+from modules import prompt_func
+from modules import global_data
 
 # from modules.speech_rec import recognize
 
@@ -15,33 +17,20 @@ with open("secret_data.json", "r") as secret_file:
 
 TOKEN = secret_data["BOT_TOKEN"]
 
-cur_dir = os.path.dirname(os.path.abspath(__file__))
-SAVE_PATH = os.path.join(cur_dir, "voice_messages")
 text_instruction = """
 Этот бот может оформлять ваши мысли касательно бизнес-идеи в фортированного вида отчет.
 Бот поддерживает контекст общения. 
 Для очистки контекста просто нажмите кнопку "Очистить контекст"
 """
 
-user_info = {}
-
-if not os.path.exists(SAVE_PATH):
-    os.makedirs(SAVE_PATH)
-
-
-def set_user_info(user_id):
-    if user_id not in user_info:
-        user_info[user_id] = {}
-        user_info[user_id]["user_dir"] = os.path.join(SAVE_PATH, str(user_id))
-        os.makedirs(user_info[user_id]["user_dir"], exist_ok=True)
-        user_info[user_id]["file_context"] = os.path.join(user_info[user_id]["user_dir"], f"context.txt")
-
 
 async def save_voice(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    set_user_info(user_id=update.effective_user.id)  # TODO Нужна ли эта строка?
-    voice = update.message.voice
     user_id = update.effective_user.id
-    user_dir = user_info[user_id]["user_dir"]
+    if not global_data.user_exists(user_id):
+        global_data.set_user_info(user_id)
+    
+    voice = update.message.voice
+    user_dir = global_data.user_info[user_id]["user_dir"]
     os.makedirs(user_dir, exist_ok=True)
 
     if voice:
@@ -51,7 +40,7 @@ async def save_voice(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
         file_path = os.path.join(user_dir, f"{fileName}.ogg")
         text_path_to_llm = os.path.join(user_dir, f"{fileName}.txt")
         text_path_from_llm = os.path.join(user_dir, f"{fileName}.md")
-        file_context = user_info[user_id]["file_context"]
+        file_context = global_data.user_info[user_id]["file_context"]
         await file.download_to_drive(file_path)
 
         # text_to_llm = recognize(SAVE_PATH=SAVE_PATH, filename=file.file_id)
@@ -69,15 +58,16 @@ async def save_voice(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
             text_to_llm = text_file.read()
 
         # text_from_llm = get_formated_text(text=text_to_llm)
-        llm_res = generate(raw_text=text_to_llm, secret_data=secret_data["YCloudML"])
-        text_from_llm = llm_res.alternatives[0].text
-        print("LLM вернула обработанный текст. Отвечаем им в ТГ и записываем с локальный файл.")
+        llm_res = generate(raw_text=text_to_llm, secret_data=secret_data["YCloudML"],
+                           prompt=global_data.user_info[user_id]["prompt"])
+        text_from_llm = llm_res
+        print("LLM вернула обработанный текст. Отвечаем им в ТГ и записываем в локальный файл.")
         with open(text_path_from_llm, "w", encoding="utf-8") as text_file:
             text_file.write(text_from_llm)
 
         chunk_size = 4000
         for i in range(0, len(text_from_llm), chunk_size):
-            await update.message.reply_text(f"Обработанный с LLM текст: {text_from_llm[i:i+chunk_size]}")
+            await update.message.reply_text(f"Обработанный с LLM текст: {text_from_llm[i:i + chunk_size]}")
 
         print(f"Ответ LLM сохранен: {text_path_from_llm}")
     else:
@@ -85,30 +75,53 @@ async def save_voice(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
 
 
 async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    set_user_info(user_id=update.effective_user.id)
-    keyboard = [["Показать контекст", "Очистить контекст", "инструкция"]]
+    user_id = update.effective_user.id
+    if not global_data.user_exists(user_id):
+        global_data.set_user_info(user_id)
+    
+    keyboard = [["Показать контекст", "Очистить контекст", "Инструкция"], ["Задать промпт", "Показать промпт"]]
     reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
     await update.message.reply_text(text_instruction, reply_markup=reply_markup)
 
 
 async def button_response(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     user_id = update.effective_user.id
-    set_user_info(user_id)
+    if not global_data.user_exists(user_id):
+        global_data.set_user_info(user_id)
+    
     text = update.message.text
-    if text == "Очистить контекст":
-        with open(user_info[user_id]["file_context"], "w") as f:
-            pass
-        await update.message.reply_text("Контекст забыт. Начинайте обсуждать новую идею")
-    if text == "инструкция":
-        await update.message.reply_text(text_instruction)
-    if text == "Показать контекст":
-
-        with open(user_info[user_id]["file_context"], "r", encoding="utf-8") as f:
-            context_file = f.read()
-        if context_file == "":
-            await update.message.reply_text("Контекст пустой")
-        else:
-            await update.message.reply_text(context_file)
+    match text:
+        case "Очистить контекст":
+            with open(global_data.user_info[user_id]["file_context"], "w") as f:
+                pass
+            await update.message.reply_text("Контекст забыт. Начинайте обсуждать новую идею")
+        case "Инструкция":
+            await update.message.reply_text(text_instruction)
+        case "Показать контекст":
+            with open(global_data.user_info[user_id]["file_context"], "r", encoding="utf-8") as f:
+                context_file = f.read()
+            if context_file == "":
+                await update.message.reply_text("Контекст пустой")
+            else:
+                await update.message.reply_text(context_file)
+        case "Задать промпт":
+            context.user_data['waiting_for_prompt'] = True
+            await update.message.reply_text("Напечатайте промпт")
+        case "Показать промпт":
+            if global_data.user_info[user_id]["prompt"]:
+                await update.message.reply_text(global_data.user_info[user_id]["prompt"])
+            else:
+                await update.message.reply_text("Промпт пустой")
+        case _:
+            if context.user_data.get('waiting_for_prompt'):
+                prompt_content = text
+                prompt_path = global_data.user_info[user_id]["file_prompt"]
+                prompt_func.set_prompt(prompt_path, prompt_content)
+                global_data.user_info[user_id]["prompt"] = prompt_func.get_prompt(prompt_path)
+                context.user_data['waiting_for_prompt'] = False
+                await update.message.reply_text("Промпт успешно сохранен!")
+            else:
+                await update.message.reply_text("Я не понимаю эту команду. Используйте кнопки меню.")
 
 
 app = ApplicationBuilder().token(TOKEN).build()

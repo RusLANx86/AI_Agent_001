@@ -4,15 +4,16 @@ from __future__ import annotations
 from yandex_cloud_ml_sdk import YCloudML
 
 
-def generate(raw_text, secret_data):
+def generate(raw_text, secret_data, prompt, temperature=.5):
+    if prompt == "":
+        return "Задайте промпт"
     messages = [
         {
             "role": "system",
             "text":
-                "Ты профессиональный бизнес-аналитик. Профессионально подробно отредактируй текст. "
-                "поищи нужную готовую информацию в интернете."
-                "Отформатируй с необходимыми отступами, шрифтами и обзацами. "
-                f"Сформируй удобочитаемый отчет для отправки как сообщение в приложении телеграм:'{raw_text}'",
+                f"{prompt}"
+                "обработай следующий текст:'"
+                f"{raw_text}'",
         },
         # {
         #     "role": "user",
@@ -25,14 +26,10 @@ def generate(raw_text, secret_data):
     )
 
     result = (
-        sdk.models.completions("yandexgpt").configure(temperature=0.5).run(messages)
+        sdk.models.completions("yandexgpt").configure(temperature=temperature).run(messages)
     )
 
-    return result
+    return result.alternatives[0].text
     # for alternative in result:
     #     return alternative
     #     print(alternative)
-
-
-if __name__ == "__main__":
-    generate()

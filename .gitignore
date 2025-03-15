@@ -1,5 +1,4 @@
 /.idea
-/voice_messages/
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
@@ -174,4 +173,5 @@ cython_debug/
 # PyPI configuration file
 .pypirc
 /__pycache__
+voice_messages/*
 secret_data.json
